@@ -170,7 +170,7 @@ const RepoInput = ({ onSubmit, isLoading }: RepoInputProps) => {
                     <div className="w-5 h-5 rounded-full bg-green-500/10 flex items-center justify-center shrink-0 text-green-500 font-bold text-[10px]">4</div>
                     <div>
                       <strong className="text-foreground block mb-1">Generate & Copy</strong>
-                      Click "Generate token". Copy the code starting with <code className="bg-secondary px-1 rounded text-foreground">ghp.......</code>
+                      Click "Generate token". Copy the code starting with <code className="bg-secondary px-1 rounded text-foreground">ghp_......</code>
                     </div>
                   </div>
                 </div>
