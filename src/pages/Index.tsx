@@ -85,19 +85,29 @@ const Index = () => {
 
   const showDashboard = state.isRunning || state.isComplete;
 
-  if (showLanding && !showDashboard) {
-    return (
-      <>
-        <Header />
-        <HeroLanding onGetStarted={() => setShowLanding(false)} onDemo={handleDemo} />
-      </>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="max-w-[1600px] mx-auto px-6 py-6 space-y-6">
+      <AnimatePresence mode="wait">
+        {showLanding && !showDashboard ? (
+          <motion.div
+            key="landing"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, scale: 0.97, filter: "blur(4px)" }}
+            transition={{ duration: 0.4, ease: "easeInOut" }}
+          >
+            <HeroLanding onGetStarted={() => setShowLanding(false)} onDemo={handleDemo} />
+          </motion.div>
+        ) : (
+          <motion.main
+            key="dashboard"
+            initial={{ opacity: 0, y: 30, filter: "blur(4px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            className="max-w-[1600px] mx-auto px-6 py-6 space-y-6"
+          >
         {/* Back + Demo buttons */}
         <div className="flex items-center justify-between">
           <button
@@ -244,7 +254,9 @@ const Index = () => {
             </div>
           </motion.div>
         )}
-      </main>
+          </motion.main>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
