@@ -2,7 +2,8 @@ import { motion } from "framer-motion";
 import { Cpu, Activity, Sun, Moon, Menu } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { Button } from "@/components/ui/button";
-import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Sheet,
   SheetContent,
@@ -14,6 +15,8 @@ import {
 const Header = () => {
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
 
   const navLinks = [
     { name: "Features", href: "/#features", type: "hash" },
@@ -102,12 +105,20 @@ const Header = () => {
           </Button>
 
           <div className="hidden md:flex items-center gap-2">
-            <Link to="/login">
-              <Button variant="ghost" size="sm">Log In</Button>
-            </Link>
-            <Link to="/signup">
-              <Button size="sm">Sign Up</Button>
-            </Link>
+            {user ? (
+              <Button onClick={() => signOut()} variant="secondary" size="sm">
+                Sign Out
+              </Button>
+            ) : (
+              <>
+                <Link to="/login">
+                  <Button variant="ghost" size="sm">Log In</Button>
+                </Link>
+                <Link to="/signup">
+                  <Button size="sm">Sign Up</Button>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu */}
@@ -146,12 +157,20 @@ const Header = () => {
                   )
                 ))}
                 <div className="h-px bg-border my-2" />
-                <Link to="/login">
-                  <Button variant="outline" className="w-full justify-start">Log In</Button>
-                </Link>
-                <Link to="/signup">
-                  <Button className="w-full justify-start">Sign Up</Button>
-                </Link>
+                {user ? (
+                  <Button onClick={() => signOut()} variant="secondary" className="w-full justify-start">
+                    Sign Out
+                  </Button>
+                ) : (
+                  <>
+                    <Link to="/login">
+                      <Button variant="outline" className="w-full justify-start">Log In</Button>
+                    </Link>
+                    <Link to="/signup">
+                      <Button className="w-full justify-start">Sign Up</Button>
+                    </Link>
+                  </>
+                )}
               </nav>
             </SheetContent>
           </Sheet>

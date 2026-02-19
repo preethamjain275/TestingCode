@@ -3,11 +3,46 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Github, Mail } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const Signup = () => {
+    const navigate = useNavigate();
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [firstName, setFirstName] = useState("");
+    const [lastName, setLastName] = useState("");
+    const [loading, setLoading] = useState(false);
+
+    const handleSignup = async () => {
+        try {
+            setLoading(true);
+            const { error } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: {
+                        first_name: firstName,
+                        last_name: lastName,
+                    },
+                },
+            });
+
+            if (error) throw error;
+
+            toast.success("Account created successfully! Please check your email to verify your account.");
+            navigate("/login");
+        } catch (error: any) {
+            toast.error(error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-background flex flex-col">
             <Header />
@@ -23,22 +58,45 @@ const Signup = () => {
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="first-name">First name</Label>
-                                <Input id="first-name" placeholder="Max" />
+                                <Input
+                                    id="first-name"
+                                    placeholder="Max"
+                                    value={firstName}
+                                    onChange={(e) => setFirstName(e.target.value)}
+                                />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="last-name">Last name</Label>
-                                <Input id="last-name" placeholder="Robinson" />
+                                <Input
+                                    id="last-name"
+                                    placeholder="Robinson"
+                                    value={lastName}
+                                    onChange={(e) => setLastName(e.target.value)}
+                                />
                             </div>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="email">Email</Label>
-                            <Input id="email" placeholder="m@example.com" type="email" />
+                            <Input
+                                id="email"
+                                placeholder="m@example.com"
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                            />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="password">Password</Label>
-                            <Input id="password" type="password" />
+                            <Input
+                                id="password"
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                            />
                         </div>
-                        <Button className="w-full">Create Account</Button>
+                        <Button className="w-full" onClick={handleSignup} disabled={loading}>
+                            {loading ? "Creating..." : "Create Account"}
+                        </Button>
                         <div className="relative">
                             <div className="absolute inset-0 flex items-center">
                                 <span className="w-full border-t border-border" />
