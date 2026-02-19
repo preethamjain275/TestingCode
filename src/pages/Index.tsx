@@ -17,11 +17,13 @@ import FixesTable from "@/components/FixesTable";
 import HealingOutput from "@/components/HealingOutput";
 import IterationTracker from "@/components/IterationTracker";
 import { createSimulation, SimulationState, SAMPLE_DIFF, SIMULATION_FIXES, generateResultsJSON } from "@/lib/simulation";
+import { createDynamicSimulation, AnalysisResult } from "@/lib/dynamicSimulation";
 import { generatePDFReport } from "@/lib/generateReport";
-import { Download, FileText, Play, ArrowLeft, FileJson } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Download, FileText, Play, ArrowLeft, FileJson, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 const DEMO_REPO = "https://github.com/healops/demo-project";
-const BRANCH_NAME = "HEALOPS_ADMIN_AI_Fix";
 const MAX_ITERATIONS = 3;
 
 const initialState = (): SimulationState => ({
@@ -38,19 +40,23 @@ const initialState = (): SimulationState => ({
   maxIterations: MAX_ITERATIONS,
   initialFailures: 6,
   finalStatus: "",
-  branch: BRANCH_NAME,
+  branch: "HEALOPS_ADMIN_AI_Fix",
 });
 
 const Index = () => {
   const [showLanding, setShowLanding] = useState(true);
   const [repoUrl, setRepoUrl] = useState("");
   const [state, setState] = useState<SimulationState>(initialState);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisData, setAnalysisData] = useState<AnalysisResult | null>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
 
-  const startHealing = useCallback((url: string) => {
+  // Demo mode — hardcoded simulation
+  const startDemo = useCallback(() => {
     if (cleanupRef.current) cleanupRef.current();
-    setRepoUrl(url);
+    setRepoUrl(DEMO_REPO);
     setShowLanding(false);
+    setAnalysisData(null);
 
     const fresh = initialState();
     fresh.isRunning = true;
@@ -61,39 +67,117 @@ const Index = () => {
     });
   }, []);
 
-  const handleSubmit = useCallback((url: string) => startHealing(url), [startHealing]);
-  const handleDemo = useCallback(() => startHealing(DEMO_REPO), [startHealing]);
+  // Real repo analysis
+  const startLiveAnalysis = useCallback(async (url: string, teamName: string, leaderName: string) => {
+    if (cleanupRef.current) cleanupRef.current();
+    setRepoUrl(url);
+    setShowLanding(false);
+    setIsAnalyzing(true);
 
-  const handleExportPDF = () => generatePDFReport(state, repoUrl);
+    const branch = `${teamName}_${leaderName}_AI_Fix`;
+
+    try {
+      const { data, error } = await supabase.functions.invoke("analyze-repo", {
+        body: { repoUrl: url, teamName, leaderName },
+      });
+
+      if (error) throw new Error(error.message || "Analysis failed");
+      if (data?.error) throw new Error(data.error);
+
+      const analysis: AnalysisResult = data;
+      setAnalysisData(analysis);
+
+      // Start dynamic simulation with real data
+      const fresh = initialState();
+      fresh.isRunning = true;
+      fresh.branch = branch;
+      fresh.initialFailures = analysis.fixes.length;
+      fresh.fixes = analysis.fixes.map(f => ({
+        file: f.file,
+        bugType: (["LINTING","SYNTAX","TYPE_ERROR","LOGIC","IMPORT","INDENTATION"].includes(f.bugType) ? f.bugType : "LOGIC") as any,
+        line: f.line,
+        commitMessage: f.commitMessage,
+        status: "pending" as const,
+      }));
+      setState(fresh);
+
+      cleanupRef.current = createDynamicSimulation(analysis, (partial) => {
+        setState(prev => ({ ...prev, ...partial }));
+      });
+
+      toast.success("Repository analyzed! Running healing simulation...");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to analyze repository");
+      // Fall back to showing the input
+      const fresh = initialState();
+      setState(fresh);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, []);
+
+  const handleSubmit = useCallback((url: string, teamName: string, leaderName: string) => {
+    startLiveAnalysis(url, teamName, leaderName);
+  }, [startLiveAnalysis]);
+
+  const handleDemo = useCallback(() => startDemo(), [startDemo]);
+
+  const handleExportPDF = () => generatePDFReport(state, repoUrl, analysisData?.rootCause);
 
   const handleExportJSON = () => {
     const json = generateResultsJSON(state, repoUrl);
     const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
+    const blobUrl = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url;
+    a.href = blobUrl;
     a.download = "results.json";
     a.click();
-    URL.revokeObjectURL(url);
+    URL.revokeObjectURL(blobUrl);
   };
 
   const handleBackToLanding = () => {
     if (cleanupRef.current) cleanupRef.current();
     setState(initialState);
     setShowLanding(true);
+    setAnalysisData(null);
   };
 
   const showDashboard = state.isRunning || state.isComplete;
 
-  // Failure chart data using exact hackathon categories
-  const failureData = [
-    { name: "IMPORT", value: 1, color: "hsl(173, 80%, 50%)" },
-    { name: "TYPE_ERROR", value: 1, color: "hsl(38, 92%, 50%)" },
-    { name: "SYNTAX", value: 1, color: "hsl(0, 72%, 55%)" },
-    { name: "LOGIC", value: 1, color: "hsl(262, 80%, 60%)" },
-    { name: "INDENTATION", value: 1, color: "hsl(200, 70%, 50%)" },
-    { name: "LINTING", value: 1, color: "hsl(142, 71%, 45%)" },
-  ];
+  // Failure chart data from actual fixes
+  const failureData = (() => {
+    const cats: Record<string, number> = {};
+    const colors: Record<string, string> = {
+      IMPORT: "hsl(173, 80%, 50%)",
+      TYPE_ERROR: "hsl(38, 92%, 50%)",
+      SYNTAX: "hsl(0, 72%, 55%)",
+      LOGIC: "hsl(262, 80%, 60%)",
+      INDENTATION: "hsl(200, 70%, 50%)",
+      LINTING: "hsl(142, 71%, 45%)",
+    };
+    state.fixes.forEach(f => { cats[f.bugType] = (cats[f.bugType] || 0) + 1; });
+    return Object.entries(cats).map(([name, value]) => ({
+      name,
+      value,
+      color: colors[name] || "hsl(0, 0%, 50%)",
+    }));
+  })();
+
+  const explainableProps = analysisData
+    ? {
+        rootCause: analysisData.rootCause,
+        fixReason: analysisData.fixReason,
+        alternatives: analysisData.alternatives,
+      }
+    : {
+        rootCause: "Import path 'react-query' is outdated. Package was renamed to '@tanstack/react-query' in v4+. The useQuery API also changed from positional arguments to an object config.",
+        fixReason: "Minimal path update preserves all existing logic. Object syntax for useQuery matches the installed v5 API. Type annotation replaces 'any' with project-defined interface.",
+        alternatives: [
+          "Downgrade to react-query@3 (rejected: breaks other deps)",
+          "Wrap in compatibility shim (rejected: adds unnecessary code)",
+          "Full refactor to SWR (rejected: scope too large for auto-fix)",
+        ],
+      };
 
   return (
     <div className="min-h-screen bg-background">
@@ -127,7 +211,7 @@ const Index = () => {
                 <ArrowLeft className="w-3.5 h-3.5" />
                 Back to Home
               </button>
-              {!state.isRunning && (
+              {!state.isRunning && !isAnalyzing && (
                 <button
                   onClick={handleDemo}
                   className="px-4 py-2 bg-accent text-accent-foreground text-xs font-semibold rounded-lg hover:brightness-110 transition-all flex items-center gap-1.5"
@@ -138,7 +222,22 @@ const Index = () => {
               )}
             </div>
 
-            <RepoInput onSubmit={handleSubmit} isLoading={state.isRunning} />
+            <RepoInput onSubmit={handleSubmit} isLoading={state.isRunning || isAnalyzing} />
+
+            {/* Analyzing state */}
+            {isAnalyzing && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex flex-col items-center justify-center py-16 text-center"
+              >
+                <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
+                <h3 className="text-xl font-bold text-foreground mb-2">Analyzing Repository...</h3>
+                <p className="text-sm text-muted-foreground max-w-md">
+                  Fetching repo contents and running AI-powered analysis to detect issues, classify failures, and generate fixes.
+                </p>
+              </motion.div>
+            )}
 
             <AnimatePresence>
               {showDashboard && (
@@ -154,7 +253,7 @@ const Index = () => {
                   <IterationTracker
                     currentIteration={state.currentIteration}
                     maxIterations={state.maxIterations}
-                    failuresPerIteration={[6]}
+                    failuresPerIteration={[state.initialFailures]}
                     isRunning={state.isRunning}
                   />
 
@@ -183,15 +282,7 @@ const Index = () => {
                         risk={state.confidence > 80 ? "low" : "medium"}
                         impact={state.confidence > 80 ? 8 : 5}
                       />
-                      <ExplainablePanel
-                        rootCause="Import path 'react-query' is outdated. Package was renamed to '@tanstack/react-query' in v4+. The useQuery API also changed from positional arguments to an object config."
-                        fixReason="Minimal path update preserves all existing logic. Object syntax for useQuery matches the installed v5 API. Type annotation replaces 'any' with project-defined interface."
-                        alternatives={[
-                          "Downgrade to react-query@3 (rejected: breaks other deps)",
-                          "Wrap in compatibility shim (rejected: adds unnecessary code)",
-                          "Full refactor to SWR (rejected: scope too large for auto-fix)",
-                        ]}
-                      />
+                      <ExplainablePanel {...explainableProps} />
                     </div>
                   </div>
 
@@ -256,7 +347,7 @@ const Index = () => {
             </AnimatePresence>
 
             {/* Idle state */}
-            {!showDashboard && (
+            {!showDashboard && !isAnalyzing && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -272,7 +363,7 @@ const Index = () => {
                   Ready to Heal
                 </h2>
                 <p className="text-muted-foreground max-w-lg text-sm leading-relaxed mb-6">
-                  Enter a GitHub repository URL above or run the live demo to see the autonomous healing pipeline in action.
+                  Enter a GitHub repository URL above with your team details, or run the live demo to see the autonomous healing pipeline in action.
                 </p>
                 <button
                   onClick={handleDemo}
@@ -282,7 +373,7 @@ const Index = () => {
                   Run Live Demo
                 </button>
                 <div className="flex flex-wrap gap-3 mt-8 justify-center">
-                  {["Multi-Agent AI", "6 Bug Categories", "Auto Branch & PR", "Self-Learning", "results.json", "Live Demo"].map((tag) => (
+                  {["Multi-Agent AI", "6 Bug Categories", "Auto Branch & PR", "Self-Learning", "results.json", "LLM Analysis"].map((tag) => (
                     <span key={tag} className="text-[10px] font-mono text-primary bg-primary/10 px-3 py-1.5 rounded-full border border-primary/20">
                       {tag}
                     </span>

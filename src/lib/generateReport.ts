@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import { SimulationState } from "@/lib/simulation";
 
-export function generatePDFReport(state: SimulationState, repoUrl: string) {
+export function generatePDFReport(state: SimulationState, repoUrl: string, dynamicRCA?: string) {
   const doc = new jsPDF();
   const pageW = doc.internal.pageSize.getWidth();
   let y = 20;
@@ -31,17 +31,16 @@ export function generatePDFReport(state: SimulationState, repoUrl: string) {
   doc.text(`Repository: ${repoUrl}`, 14, y);
   y += 12;
 
-  // Summary — exact hackathon output format
+  // Summary
   addSection("Healing Summary");
-  const fixedCount = state.fixes ? state.fixes.filter(f => f.status === "fixed").length : 3;
+  const fixedCount = state.fixes ? state.fixes.filter(f => f.status === "fixed").length : 0;
   const summary = [
     `Repository: ${repoUrl}`,
-    `Branch: ${state.branch || "HEALOPS_ADMIN_AI_Fix"}`,
-    `Initial Failures: ${state.initialFailures || 6}`,
+    `Branch: ${state.branch}`,
+    `Initial Failures: ${state.initialFailures}`,
     `Fixes Applied: ${fixedCount}`,
     `Final Status: ${state.finalStatus || (state.isComplete ? "PASSED" : "IN PROGRESS")}`,
     `Iterations: ${state.currentIteration || 1}`,
-    `Total Time: 32.5s`,
     `Pre-Fix Health: ${state.healthBefore}/100`,
     `Post-Fix Health: ${state.healthAfter}/100`,
     `Confidence: ${state.confidence}%`,
@@ -64,16 +63,7 @@ export function generatePDFReport(state: SimulationState, repoUrl: string) {
   }
   y += 6;
 
-  // Agent Activity
-  addSection("Agent Activity");
-  state.agents.forEach(agent => {
-    const statusEmoji = agent.status === "done" ? "✓" : agent.status === "active" ? "●" : "○";
-    doc.text(`${statusEmoji} ${agent.name} — ${agent.description} [${agent.status.toUpperCase()}]`, 18, y);
-    y += 5;
-  });
-  y += 6;
-
-  // Failure Classification — exact hackathon categories
+  // Failure Classification
   addSection("Failure Classification");
   const categories = ["LINTING", "SYNTAX", "TYPE_ERROR", "LOGIC", "IMPORT", "INDENTATION"];
   categories.forEach(cat => {
@@ -85,26 +75,20 @@ export function generatePDFReport(state: SimulationState, repoUrl: string) {
 
   // Root Cause Analysis
   addSection("Root Cause Analysis");
-  const rcaLines = doc.splitTextToSize(
-    "Import path 'react-query' is outdated. Package was renamed to '@tanstack/react-query' in v4+. The useQuery API also changed from positional arguments to an object config.",
-    pageW - 36
-  );
+  const rcaText = dynamicRCA || "Import path 'react-query' is outdated. Package was renamed to '@tanstack/react-query' in v4+.";
+  const rcaLines = doc.splitTextToSize(rcaText, pageW - 36);
   doc.text(rcaLines, 18, y);
   y += rcaLines.length * 5 + 6;
 
-  // Patches Applied
-  addSection("Patches Applied");
-  const patches = [
-    "1. Updated import path in Dashboard.tsx: 'react-query' → '@tanstack/react-query'",
-    "2. Fixed type annotation in useAuth.ts: 'any' → 'DashboardData'",
-    "3. Updated useQuery API from positional args to object config",
-  ];
-  patches.forEach(p => {
-    const lines = doc.splitTextToSize(p, pageW - 36);
-    doc.text(lines, 18, y);
-    y += lines.length * 5 + 2;
+  // Agent Activity
+  addSection("Agent Activity");
+  state.agents.forEach(agent => {
+    if (y > 275) { doc.addPage(); y = 20; }
+    const statusEmoji = agent.status === "done" ? "✓" : agent.status === "active" ? "●" : "○";
+    doc.text(`${statusEmoji} ${agent.name} — ${agent.description} [${agent.status.toUpperCase()}]`, 18, y);
+    y += 5;
   });
-  y += 4;
+  y += 6;
 
   // Log Timeline
   addSection("Execution Log");
@@ -116,16 +100,6 @@ export function generatePDFReport(state: SimulationState, repoUrl: string) {
     doc.text(wrapped, 18, y);
     y += wrapped.length * 4.5 + 1;
   });
-
-  // Footer
-  doc.addPage();
-  y = 20;
-  addSection("Conclusion");
-  const conclusion = doc.splitTextToSize(
-    "The HealOps autonomous healing pipeline successfully diagnosed and repaired all 5 failing tests across 3 code files. The pipeline health score improved from 61 to 94. All fixes were committed with the [AI-AGENT] prefix and pushed to branch HEALOPS_ADMIN_AI_Fix. A pull request (#42) has been created for review.",
-    pageW - 36
-  );
-  doc.text(conclusion, 18, y);
 
   doc.save("HealOps_AI_Report.pdf");
 }
