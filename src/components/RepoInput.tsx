@@ -103,7 +103,7 @@ const RepoInput = ({ onSubmit, isLoading }: RepoInputProps) => {
             type="password"
             value={token}
             onChange={(e) => setToken(e.target.value)}
-            placeholder="GitHub Personal Access Token (Optional)"
+            placeholder="GitHub Personal Access Token"
             className="w-full pl-10 pr-10 py-3 bg-secondary border border-border rounded-lg text-foreground placeholder:text-muted-foreground font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
             disabled={isLoading}
           />
@@ -129,7 +129,7 @@ const RepoInput = ({ onSubmit, isLoading }: RepoInputProps) => {
               <div className="p-4 space-y-4 text-sm bg-background/50 backdrop-blur-sm">
                 <div className="flex items-center justify-between border-b border-white/10 pb-2">
                   <h4 className="font-semibold flex items-center gap-2 text-primary">
-                    <CheckCircle2 className="w-4 h-4" /> Generating a GitHub Token
+                    <CheckCircle2 className="w-4 h-4" /> Generating a GitHub Token [Once]
                   </h4>
                   <a
                     href="https://github.com/settings/tokens"
