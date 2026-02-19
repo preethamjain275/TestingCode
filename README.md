@@ -87,9 +87,9 @@ Follow these steps to set up the project locally.
 
 Have questions or need support? Reach out to us!
 
-- **Email:** support@healops.ai
-- **Phone:** +1 (555) 123-4567
-- **Address:** 123 Innovation Drive, Tech Valley, CA 94043
+- **Email:** karnacoder22@gmail.com
+- **Phone:** +91 6362245678
+- **Address:** 3rd Floor, Techspire Towers 42 MG Road Indiranagar Bangalore, Karnataka 560038 India
 
 ---
 
