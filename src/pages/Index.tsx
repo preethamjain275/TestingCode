@@ -573,11 +573,15 @@ const Index = () => {
                   ))}
                 </div>
               </motion.div>
+                </div>
+              </motion.div>
             )}
-          </motion.main>
-        )}
-      </AnimatePresence>
-    </div>
+      <Footer />
+    </motion.main>
+  )
+}
+      </AnimatePresence >
+    </div >
   );
 };
 
