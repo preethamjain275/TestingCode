@@ -24,12 +24,22 @@ const Login = () => {
                 password,
             });
 
-            if (error) throw error;
+            if (error) {
+                if (error.message.includes("Email not confirmed")) {
+                    toast.error("Please verify your email address before logging in.");
+                } else if (error.message.includes("Invalid login credentials")) {
+                    toast.error("Invalid email or password. Please check your credentials.");
+                } else {
+                    toast.error(error.message);
+                }
+                return;
+            }
 
             toast.success("Logged in successfully!");
             navigate("/");
         } catch (error: any) {
-            toast.error(error.message);
+            // Redundant catch if we handle 'error' return above, but safe
+            console.error("Login Error:", error);
         } finally {
             setLoading(false);
         }

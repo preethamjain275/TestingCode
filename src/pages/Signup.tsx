@@ -32,12 +32,20 @@ const Signup = () => {
                 },
             });
 
-            if (error) throw error;
+            if (error) {
+                if (error.message.includes("User already registered")) {
+                    toast.error("User already registered. Please login.");
+                    navigate("/login");
+                } else {
+                    toast.error(error.message);
+                }
+                return;
+            }
 
-            toast.success("Account created successfully! Please check your email to verify your account.");
+            toast.success("Account created! Please CHECK YOUR EMAIL to verify your account before logging in.");
             navigate("/login");
         } catch (error: any) {
-            toast.error(error.message);
+            console.error("Signup error:", error);
         } finally {
             setLoading(false);
         }

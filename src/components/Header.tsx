@@ -106,9 +106,14 @@ const Header = () => {
 
           <div className="hidden md:flex items-center gap-2">
             {user ? (
-              <Button onClick={() => signOut()} variant="secondary" size="sm">
-                Sign Out
-              </Button>
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-medium">
+                  Hi, {user.user_metadata?.first_name || user.email?.split('@')[0]}
+                </span>
+                <Button onClick={() => signOut()} variant="secondary" size="sm">
+                  Sign Out
+                </Button>
+              </div>
             ) : (
               <>
                 <Link to="/login">
@@ -158,9 +163,14 @@ const Header = () => {
                 ))}
                 <div className="h-px bg-border my-2" />
                 {user ? (
-                  <Button onClick={() => signOut()} variant="secondary" className="w-full justify-start">
-                    Sign Out
-                  </Button>
+                  <>
+                    <div className="px-2 py-2 text-sm font-medium text-muted-foreground">
+                      Signed in as {user.user_metadata?.first_name || user.email}
+                    </div>
+                    <Button onClick={() => signOut()} variant="secondary" className="w-full justify-start">
+                      Sign Out
+                    </Button>
+                  </>
                 ) : (
                   <>
                     <Link to="/login">
