@@ -13,11 +13,13 @@ import ExplainablePanel from "@/components/ExplainablePanel";
 import ResultsSummary from "@/components/ResultsSummary";
 import PredictivePanel from "@/components/PredictivePanel";
 import FixDetailPanel, { DetailedFix } from "@/components/FixDetailPanel";
+import ScoreBreakdownPanel from "@/components/ScoreBreakdownPanel";
 import HealingOutput from "@/components/HealingOutput";
 import IterationTracker from "@/components/IterationTracker";
 import { createSimulation, SimulationState, SAMPLE_DIFF, SIMULATION_FIXES, generateResultsJSON } from "@/lib/simulation";
 import { createDynamicSimulation, AnalysisResult } from "@/lib/dynamicSimulation";
 import { generatePDFReport } from "@/lib/generateReport";
+import { createBranch, commitFile } from "@/lib/github-client";
 import { supabase } from "@/integrations/supabase/client";
 import { Download, FileText, Play, ArrowLeft, FileJson, Loader2, Code2, GitBranch, FileCode, Bug } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -51,10 +53,14 @@ const Index = () => {
   const [analysisData, setAnalysisData] = useState<AnalysisResult | null>(null);
   const [detailedFixes, setDetailedFixes] = useState<DetailedFix[]>([]);
   const cleanupRef = useRef<(() => void) | null>(null);
+  const [startTime, setStartTime] = useState<number>(0);
+  const [endTime, setEndTime] = useState<number>(0);
 
   // Demo mode — hardcoded simulation
   const startDemo = useCallback(() => {
     if (cleanupRef.current) cleanupRef.current();
+    setStartTime(Date.now());
+    setEndTime(0);
     setRepoUrl(DEMO_REPO);
     setShowLanding(false);
     setAnalysisData(null);
@@ -64,18 +70,53 @@ const Index = () => {
     setState(fresh);
 
     cleanupRef.current = createSimulation((partial) => {
-      setState(prev => ({ ...prev, ...partial }));
+      setState(prev => {
+        const newState = { ...prev, ...partial };
+        if (newState.isComplete && !prev.isComplete) {
+          setEndTime(Date.now());
+        }
+        return newState;
+      });
     });
   }, []);
 
   // Real repo analysis
-  const startLiveAnalysis = useCallback(async (url: string, teamName: string, leaderName: string) => {
+  const startLiveAnalysis = useCallback(async (url: string, teamName: string, leaderName: string, token?: string) => {
     if (cleanupRef.current) cleanupRef.current();
+    setStartTime(Date.now());
+    setEndTime(0);
     setRepoUrl(url);
     setShowLanding(false);
     setIsAnalyzing(true);
 
-    const branch = `${teamName}_${leaderName}_AI_Fix`;
+    const branch = `${teamName.toUpperCase().replace(/\s+/g, '_')}_${leaderName.toUpperCase().replace(/\s+/g, '_')}_AI_Fix`;
+
+    // Initialize GitHub integration
+    let gitConfig;
+    if (token) {
+      try {
+        const parts = url.replace("https://github.com/", "").split("/");
+        const owner = parts[0];
+        const repo = parts[1];
+        gitConfig = { owner, repo, token, branch };
+
+        toast.info("Connecting to GitHub...");
+        // Attempt to create branch
+        try {
+          await createBranch(gitConfig);
+          toast.success(`Created branch: ${branch}`);
+        } catch (e: any) {
+          if (e.status === 422) {
+            toast.info(`Branch ${branch} already exists, using it.`);
+          } else {
+            console.error(e);
+            toast.error("Failed to create branch. Check token permissions.");
+          }
+        }
+      } catch (e) {
+        console.error("Invalid Repo URL for Git operations");
+      }
+    }
 
     try {
       const { data, error } = await supabase.functions.invoke("analyze-repo", {
@@ -83,7 +124,6 @@ const Index = () => {
       });
 
       if (error) {
-        // supabase-js v2: FunctionsHttpError has a context (Response) property
         let msg = "Analysis failed";
         try {
           if (error.context && typeof error.context.json === "function") {
@@ -102,8 +142,32 @@ const Index = () => {
       const analysis: AnalysisResult = data;
       setAnalysisData(analysis);
 
+      // Commit Analysis Report if token present
+      if (gitConfig) {
+        try {
+          let reportContent = `# HealOps AI Analysis Report\n\n`;
+          reportContent += `**Team:** ${teamName}\n**Leader:** ${leaderName}\n**Date:** ${new Date().toISOString()}\n\n`;
+          reportContent += `## Summary\n- **Issues Found:** ${analysis.fixes.length}\n\n`;
+
+          analysis.fixes.forEach(f => {
+            reportContent += `### ${f.file} (Line ${f.line})\n- **Issue:** ${f.description}\n- **Fix:** \`${f.fixSuggestion}\`\n\n`;
+          });
+
+          await commitFile(
+            gitConfig,
+            "HEALOPS_ANALYSIS_REPORT.md",
+            reportContent,
+            "[AI AGENT] Added Analysis Report"
+          );
+          toast.success("Pushed Analysis Report to GitHub!");
+        } catch (e) {
+          console.error(e);
+          toast.error("Failed to push report to GitHub.");
+        }
+      }
+
       // Build detailed fixes for the interactive panel
-      const validBugTypes = ["LINTING","SYNTAX","TYPE_ERROR","LOGIC","IMPORT","INDENTATION"];
+      const validBugTypes = ["LINTING", "SYNTAX", "TYPE_ERROR", "LOGIC", "IMPORT", "INDENTATION"];
       setDetailedFixes(analysis.fixes.map(f => ({
         file: f.file,
         bugType: (validBugTypes.includes(f.bugType) ? f.bugType : "LOGIC") as DetailedFix["bugType"],
@@ -130,20 +194,25 @@ const Index = () => {
       setState(fresh);
 
       cleanupRef.current = createDynamicSimulation(analysis, (partial) => {
-        setState(prev => ({ ...prev, ...partial }));
-        // Sync fix statuses to detailed panel
-        if (partial.fixes) {
-          setDetailedFixes(prev => prev.map((df, i) => ({
-            ...df,
-            status: partial.fixes![i]?.status || df.status,
-          })));
-        }
+        setState(prev => {
+          const newState = { ...prev, ...partial };
+          if (newState.isComplete && !prev.isComplete) {
+            setEndTime(Date.now());
+          }
+          // Sync fix statuses to detailed panel
+          if (partial.fixes) {
+            setDetailedFixes(prevFixes => prevFixes.map((df, i) => ({
+              ...df,
+              status: partial.fixes![i]?.status || df.status,
+            })));
+          }
+          return newState;
+        });
       });
 
       toast.success("Repository analyzed! Running healing simulation...");
     } catch (err: any) {
       toast.error(err.message || "Failed to analyze repository");
-      // Fall back to showing the input
       const fresh = initialState();
       setState(fresh);
     } finally {
@@ -151,8 +220,8 @@ const Index = () => {
     }
   }, []);
 
-  const handleSubmit = useCallback((url: string, teamName: string, leaderName: string) => {
-    startLiveAnalysis(url, teamName, leaderName);
+  const handleSubmit = useCallback((url: string, teamName: string, leaderName: string, token?: string) => {
+    startLiveAnalysis(url, teamName, leaderName, token);
   }, [startLiveAnalysis]);
 
   const handleDemo = useCallback(() => startDemo(), [startDemo]);
@@ -227,19 +296,19 @@ const Index = () => {
 
   const explainableProps = analysisData
     ? {
-        rootCause: analysisData.rootCause,
-        fixReason: analysisData.fixReason,
-        alternatives: analysisData.alternatives,
-      }
+      rootCause: analysisData.rootCause,
+      fixReason: analysisData.fixReason,
+      alternatives: analysisData.alternatives,
+    }
     : {
-        rootCause: "Import path 'react-query' is outdated. Package was renamed to '@tanstack/react-query' in v4+. The useQuery API also changed from positional arguments to an object config.",
-        fixReason: "Minimal path update preserves all existing logic. Object syntax for useQuery matches the installed v5 API. Type annotation replaces 'any' with project-defined interface.",
-        alternatives: [
-          "Downgrade to react-query@3 (rejected: breaks other deps)",
-          "Wrap in compatibility shim (rejected: adds unnecessary code)",
-          "Full refactor to SWR (rejected: scope too large for auto-fix)",
-        ],
-      };
+      rootCause: "Import path 'react-query' is outdated. Package was renamed to '@tanstack/react-query' in v4+. The useQuery API also changed from positional arguments to an object config.",
+      fixReason: "Minimal path update preserves all existing logic. Object syntax for useQuery matches the installed v5 API. Type annotation replaces 'any' with project-defined interface.",
+      alternatives: [
+        "Downgrade to react-query@3 (rejected: breaks other deps)",
+        "Wrap in compatibility shim (rejected: adds unnecessary code)",
+        "Full refactor to SWR (rejected: scope too large for auto-fix)",
+      ],
+    };
 
   return (
     <div className="min-h-screen bg-background">
@@ -424,14 +493,22 @@ const Index = () => {
                             finalStatus={state.finalStatus as "PASSED" | "FAILED"}
                             iterations={state.currentIteration}
                           />
-                          <ResultsSummary
-                            repoName={repoUrl.replace("https://github.com/", "")}
-                            branch={state.branch}
-                            iterations={state.currentIteration}
-                            fixesApplied={state.fixes.filter(f => f.status === "fixed").length}
-                            totalTime="32.5s"
-                            status="success"
-                          />
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <ResultsSummary
+                              repoName={repoUrl.replace("https://github.com/", "")}
+                              branch={state.branch}
+                              iterations={state.currentIteration}
+                              fixesApplied={state.fixes.filter(f => f.status === "fixed").length}
+                              totalTime={`${(((endTime || Date.now()) - startTime) / 1000).toFixed(1)}s`}
+                              status={state.finalStatus === "PASSED" ? "success" : "failed"}
+                            />
+                            <ScoreBreakdownPanel
+                              baseScore={100}
+                              speedBonus={((endTime || Date.now()) - startTime) / 1000 < 300 ? 10 : 0}
+                              efficiencyPenalty={Math.max(0, (state.fixes.filter(f => f.status === "fixed").length - 20) * 2)}
+                              finalScore={100 + (((endTime || Date.now()) - startTime) / 1000 < 300 ? 10 : 0) - Math.max(0, (state.fixes.filter(f => f.status === "fixed").length - 20) * 2)}
+                            />
+                          </div>
                           <div className="grid grid-cols-3 gap-3">
                             <button
                               onClick={handleExportPDF}

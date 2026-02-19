@@ -11,9 +11,9 @@ interface ResultsSummaryProps {
 }
 
 const statusConfig = {
-  success: { label: "All Tests Passing", color: "text-accent", bg: "bg-accent/10", border: "border-accent/20" },
-  partial: { label: "Partial Fix", color: "text-warning", bg: "bg-warning/10", border: "border-warning/20" },
-  failed: { label: "Fix Failed", color: "text-destructive", bg: "bg-destructive/10", border: "border-destructive/20" },
+  success: { label: "PASSED", color: "text-accent", bg: "bg-accent/10", border: "border-accent/20" },
+  partial: { label: "PARTIAL", color: "text-warning", bg: "bg-warning/10", border: "border-warning/20" },
+  failed: { label: "FAILED", color: "text-destructive", bg: "bg-destructive/10", border: "border-destructive/20" },
 };
 
 const ResultsSummary = ({ repoName, branch, iterations, fixesApplied, totalTime, status }: ResultsSummaryProps) => {

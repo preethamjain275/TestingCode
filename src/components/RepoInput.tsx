@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { GitBranch, Search, Zap, AlertCircle, Users, User } from "lucide-react";
+import { GitBranch, Search, Zap, AlertCircle, Users, User, Lock } from "lucide-react";
 
 interface RepoInputProps {
-  onSubmit: (url: string, teamName: string, leaderName: string) => void;
+  onSubmit: (url: string, teamName: string, leaderName: string, token?: string) => void;
   isLoading: boolean;
 }
 
@@ -11,6 +11,7 @@ const RepoInput = ({ onSubmit, isLoading }: RepoInputProps) => {
   const [url, setUrl] = useState("");
   const [teamName, setTeamName] = useState("");
   const [leaderName, setLeaderName] = useState("");
+  const [token, setToken] = useState("");
   const [error, setError] = useState("");
 
   const validateUrl = (val: string) => {
@@ -35,7 +36,7 @@ const RepoInput = ({ onSubmit, isLoading }: RepoInputProps) => {
       return;
     }
     setError("");
-    onSubmit(url.trim(), teamName.trim().toUpperCase(), leaderName.trim().toUpperCase());
+    onSubmit(url.trim(), teamName.trim().toUpperCase(), leaderName.trim().toUpperCase(), token.trim());
   };
 
   return (
@@ -76,7 +77,7 @@ const RepoInput = ({ onSubmit, isLoading }: RepoInputProps) => {
               type="text"
               value={teamName}
               onChange={(e) => { setTeamName(e.target.value.toUpperCase()); setError(""); }}
-              placeholder="TEAM NAME"
+              placeholder="e.g. RIFT ORGANISERS"
               className="w-full pl-10 pr-4 py-3 bg-secondary border border-border rounded-lg text-foreground placeholder:text-muted-foreground font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all uppercase"
               disabled={isLoading}
             />
@@ -87,11 +88,24 @@ const RepoInput = ({ onSubmit, isLoading }: RepoInputProps) => {
               type="text"
               value={leaderName}
               onChange={(e) => { setLeaderName(e.target.value.toUpperCase()); setError(""); }}
-              placeholder="LEADER NAME"
+              placeholder="e.g. SAIYAM KUMAR"
               className="w-full pl-10 pr-4 py-3 bg-secondary border border-border rounded-lg text-foreground placeholder:text-muted-foreground font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all uppercase"
               disabled={isLoading}
             />
           </div>
+        </div>
+
+        {/* GitHub Token (Optional) */}
+        <div className="relative">
+          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            type="password"
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            placeholder="GitHub Personal Access Token (Optional)"
+            className="w-full pl-10 pr-4 py-3 bg-secondary border border-border rounded-lg text-foreground placeholder:text-muted-foreground font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+            disabled={isLoading}
+          />
         </div>
 
         {/* Branch preview */}
@@ -121,7 +135,7 @@ const RepoInput = ({ onSubmit, isLoading }: RepoInputProps) => {
           className="w-full px-6 py-3 bg-primary text-primary-foreground font-semibold rounded-lg hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
         >
           <Zap className="w-4 h-4" />
-          {isLoading ? "Analyzing..." : "Start Healing"}
+          {isLoading ? "Running Agent..." : "Run Agent"}
         </button>
       </form>
     </motion.div>
