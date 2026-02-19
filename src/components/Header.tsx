@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { Cpu, Activity, Sun, Moon, Menu } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   Sheet,
   SheetContent,
@@ -13,12 +13,25 @@ import {
 
 const Header = () => {
   const { theme, toggleTheme } = useTheme();
+  const location = useLocation();
 
   const navLinks = [
-    { name: "Features", href: "#features" },
-    { name: "Docs", href: "#docs" },
-    { name: "Contact Us", href: "#contact" },
+    { name: "Features", href: "/#features", type: "hash" },
+    { name: "Docs", href: "/docs", type: "path" },
+    { name: "Contact Us", href: "/contact", type: "path" },
   ];
+
+  const handleHashLink = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    // If we are already on the home page, just scroll
+    if (href.startsWith("/#") && location.pathname === "/") {
+      const id = href.replace("/#", "");
+      const element = document.getElementById(id);
+      if (element) {
+        e.preventDefault();
+        element.scrollIntoView({ behavior: "smooth" });
+      }
+    }
+  };
 
   return (
     <header className="border-b border-border bg-card/50 backdrop-blur-xl sticky top-0 z-50">
@@ -47,13 +60,24 @@ const Header = () => {
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-6">
           {navLinks.map((link) => (
-            <a
-              key={link.name}
-              href={link.href}
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors hover:text-primary"
-            >
-              {link.name}
-            </a>
+            link.type === 'hash' ? (
+              <a
+                key={link.name}
+                href={link.href}
+                onClick={(e) => handleHashLink(e, link.href)}
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors hover:text-primary"
+              >
+                {link.name}
+              </a>
+            ) : (
+              <Link
+                key={link.name}
+                to={link.href}
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors hover:text-primary"
+              >
+                {link.name}
+              </Link>
+            )
           ))}
         </nav>
 
@@ -102,13 +126,24 @@ const Header = () => {
               </SheetHeader>
               <nav className="flex flex-col gap-4">
                 {navLinks.map((link) => (
-                  <a
-                    key={link.name}
-                    href={link.href}
-                    className="text-lg font-medium text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {link.name}
-                  </a>
+                  link.type === 'hash' ? (
+                    <a
+                      key={link.name}
+                      href={link.href}
+                      onClick={(e) => handleHashLink(e, link.href)}
+                      className="text-lg font-medium text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {link.name}
+                    </a>
+                  ) : (
+                    <Link
+                      key={link.name}
+                      to={link.href}
+                      className="text-lg font-medium text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {link.name}
+                    </Link>
+                  )
                 ))}
                 <div className="h-px bg-border my-2" />
                 <Link to="/login">

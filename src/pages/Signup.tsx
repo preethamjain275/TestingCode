@@ -14,8 +14,8 @@ const Signup = () => {
             <div className="flex-1 flex items-center justify-center p-4">
                 <Card className="w-full max-w-md border-border/50 bg-card/50 backdrop-blur-xl">
                     <CardHeader className="space-y-1">
-                        <CardTitle className="text-2xl font-bold tracking-tight">Create an account</CardTitle>
-                        <CardDescription>
+                        <CardTitle className="text-2xl ml-20 font-bold tracking-tight">Create an account</CardTitle>
+                        <CardDescription className="ml-10" >
                             Enter your email below to create your account
                         </CardDescription>
                     </CardHeader>
