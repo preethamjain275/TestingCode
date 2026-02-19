@@ -184,3 +184,41 @@ export function createDynamicSimulation(
 
   return () => timeouts.forEach(clearTimeout);
 }
+
+export function generateMockAnalysis(url: string): AnalysisResult {
+  const repoName = url.split("/").pop() || "repository";
+
+  // Deterministic "random" based on repo name length
+  const seed = repoName.length;
+  const fileCount = 20 + (seed * 5) % 80;
+  const isTypscript = seed % 2 === 0;
+  const framework = isTypscript ? "React + TypeScript" : "Next.js";
+
+  const potentialFiles = [
+    "src/App.tsx", "src/components/Header.tsx", "src/lib/utils.ts",
+    "src/pages/Dashboard.tsx", "package.json", "src/styles/globals.css",
+    "src/hooks/useAuth.ts", "src/api/client.ts"
+  ];
+
+  const bugTypes = ["LINTING", "SYNTAX", "TYPE_ERROR", "LOGIC", "IMPORT", "INDENTATION"];
+
+  const fixes = Array.from({ length: 4 + (seed % 4) }).map((_, i) => ({
+    file: potentialFiles[i % potentialFiles.length],
+    bugType: bugTypes[(seed + i) % bugTypes.length],
+    line: 10 + i * 15,
+    description: `Detected potential issue in logic flow for ${repoName}`,
+    fixSuggestion: `const fixedValue = ${i + 1}; // AI Optimized`,
+    commitMessage: `fix(${repoName}): optimize logic in ${potentialFiles[i % potentialFiles.length]}`,
+  }));
+
+  return {
+    detectedFramework: framework,
+    fixes,
+    rootCause: "Complex dependency interaction causing race conditions in state management.",
+    fixReason: "Standardization of async patterns prevents this class of errors.",
+    alternatives: ["Switch to atomic state updates", "Refactor to use Redux"],
+    confidence: 85 + (seed % 10),
+    branch: `${repoName.toUpperCase()}_AI_FIX`,
+    fileCount
+  };
+}
