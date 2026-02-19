@@ -1,7 +1,10 @@
 import { motion } from "framer-motion";
-import { Cpu, Activity, Zap } from "lucide-react";
+import { Cpu, Activity, Zap, Sun, Moon } from "lucide-react";
+import { useTheme } from "@/hooks/use-theme";
 
 const Header = () => {
+  const { theme, toggleTheme } = useTheme();
+
   return (
     <header className="border-b border-border bg-card/50 backdrop-blur-xl sticky top-0 z-50">
       <div className="max-w-[1600px] mx-auto px-6 py-3 flex items-center justify-between">
@@ -23,7 +26,7 @@ const Header = () => {
             <p className="text-[10px] text-muted-foreground">Autonomous CI/CD Healing Platform</p>
           </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Activity className="w-3.5 h-3.5 text-accent animate-pulse" />
             <span>System Online</span>
@@ -32,6 +35,17 @@ const Header = () => {
             <Zap className="w-3.5 h-3.5 text-primary" />
             <span>v2.0.0</span>
           </div>
+          <button
+            onClick={toggleTheme}
+            className="w-9 h-9 rounded-lg bg-secondary border border-border flex items-center justify-center hover:bg-muted transition-colors"
+            title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+          >
+            {theme === "dark" ? (
+              <Sun className="w-4 h-4 text-warning" />
+            ) : (
+              <Moon className="w-4 h-4 text-primary" />
+            )}
+          </button>
         </div>
       </div>
     </header>
