@@ -137,7 +137,7 @@ const Index = () => {
         const { generateMockAnalysis } = await import("@/lib/dynamicSimulation");
         analysis = generateMockAnalysis(url);
         if (!url.includes("demo-project")) {
-          toast.info("Backend unavailable: Running simulation mode");
+         {/* toast.info("Backend unavailable: Running simulation mode"); */}
         }
       }
       setAnalysisData(analysis);
