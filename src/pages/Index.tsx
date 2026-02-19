@@ -20,7 +20,8 @@ import { createSimulation, SimulationState, SAMPLE_DIFF, SIMULATION_FIXES, gener
 import { createDynamicSimulation, AnalysisResult } from "@/lib/dynamicSimulation";
 import { generatePDFReport } from "@/lib/generateReport";
 import { supabase } from "@/integrations/supabase/client";
-import { Download, FileText, Play, ArrowLeft, FileJson, Loader2 } from "lucide-react";
+import { Download, FileText, Play, ArrowLeft, FileJson, Loader2, Code2, GitBranch, FileCode, Bug } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
 const DEMO_REPO = "https://github.com/healops/demo-project";
@@ -81,7 +82,12 @@ const Index = () => {
         body: { repoUrl: url, teamName, leaderName },
       });
 
-      if (error) throw new Error(error.message || "Analysis failed");
+      if (error) {
+        const msg = typeof error === "object" && error !== null
+          ? (error as any).message || JSON.stringify(error)
+          : String(error);
+        throw new Error(msg || "Analysis failed");
+      }
       if (data?.error) throw new Error(data.error);
 
       const analysis: AnalysisResult = data;
@@ -236,6 +242,40 @@ const Index = () => {
                 <p className="text-sm text-muted-foreground max-w-md">
                   Fetching repo contents and running AI-powered analysis to detect issues, classify failures, and generate fixes.
                 </p>
+              </motion.div>
+            )}
+
+            {/* Repo Info Panel */}
+            {analysisData && showDashboard && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="glass rounded-xl p-4 flex flex-wrap items-center gap-4"
+              >
+                <div className="flex items-center gap-2 text-sm text-foreground font-mono">
+                  <GitBranch className="w-4 h-4 text-primary" />
+                  <span className="text-muted-foreground">Repo:</span>
+                  <span className="font-semibold">{repoUrl.replace("https://github.com/", "")}</span>
+                </div>
+                {analysisData.detectedFramework && (
+                  <Badge className="bg-primary/10 text-primary border-primary/20 gap-1.5">
+                    <Code2 className="w-3 h-3" />
+                    {analysisData.detectedFramework}
+                  </Badge>
+                )}
+                {analysisData.fileCount && (
+                  <Badge variant="secondary" className="gap-1.5">
+                    <FileCode className="w-3 h-3" />
+                    {analysisData.fileCount} files scanned
+                  </Badge>
+                )}
+                <Badge variant="secondary" className="gap-1.5">
+                  <Bug className="w-3 h-3" />
+                  {analysisData.fixes.length} issues found
+                </Badge>
+                <div className="text-xs font-mono text-muted-foreground ml-auto">
+                  Branch: <span className="text-accent">{state.branch}</span>
+                </div>
               </motion.div>
             )}
 
