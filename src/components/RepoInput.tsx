@@ -14,7 +14,7 @@ const RepoInput = ({ onSubmit, isLoading }: RepoInputProps) => {
   const [error, setError] = useState("");
 
   const validateUrl = (val: string) => {
-    const pattern = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+(\.git)?$/;
+    const pattern = /^https?:\/\/(www\.)?github\.com\/[\w.-]+\/[\w.-]+/;
     return pattern.test(val.trim());
   };
 
