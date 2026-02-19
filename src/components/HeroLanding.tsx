@@ -21,7 +21,7 @@ const FEATURES = [
 const AGENT_LIST = [
   { name: "Repo Intelligence", desc: "Maps structure, deps, frameworks", icon: Code },
   { name: "Test Discovery", desc: "Detects & runs test frameworks", icon: TestTube },
-  { name: "Failure Diagnosis", desc: "Classifies into 8 failure types", icon: Eye },
+  { name: "Failure Diagnosis", desc: "LINTING, SYNTAX, TYPE_ERROR, LOGIC, IMPORT, INDENTATION", icon: Eye },
   { name: "Root Cause Analysis", desc: "LLM-powered why analysis", icon: Brain },
   { name: "Patch Generation", desc: "Minimal, safe code fixes", icon: Sparkles },
   { name: "Confidence & Risk", desc: "Scores reliability & impact", icon: Shield },
@@ -108,7 +108,7 @@ const HeroLanding = ({ onGetStarted, onDemo }: HeroLandingProps) => {
             <AnimatedCounter end={10} label="AI Agents" />
             <AnimatedCounter end={94} suffix="%" label="Avg Confidence" />
             <AnimatedCounter end={33} prefix="<" suffix="s" label="Heal Time" />
-            <AnimatedCounter end={8} label="Failure Types" />
+            <AnimatedCounter end={6} label="Bug Categories" />
           </motion.div>
         </div>
       </section>
