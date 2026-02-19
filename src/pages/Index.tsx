@@ -8,12 +8,11 @@ import PipelineTimeline, { DEFAULT_STEPS } from "@/components/PipelineTimeline";
 import LogStream from "@/components/LogStream";
 import HealthScore from "@/components/HealthScore";
 import ConfidenceMeter from "@/components/ConfidenceMeter";
-import CodeDiff from "@/components/CodeDiff";
 import FailureChart from "@/components/FailureChart";
 import ExplainablePanel from "@/components/ExplainablePanel";
 import ResultsSummary from "@/components/ResultsSummary";
 import PredictivePanel from "@/components/PredictivePanel";
-import FixesTable from "@/components/FixesTable";
+import FixDetailPanel, { DetailedFix } from "@/components/FixDetailPanel";
 import HealingOutput from "@/components/HealingOutput";
 import IterationTracker from "@/components/IterationTracker";
 import { createSimulation, SimulationState, SAMPLE_DIFF, SIMULATION_FIXES, generateResultsJSON } from "@/lib/simulation";
@@ -50,6 +49,7 @@ const Index = () => {
   const [state, setState] = useState<SimulationState>(initialState);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisData, setAnalysisData] = useState<AnalysisResult | null>(null);
+  const [detailedFixes, setDetailedFixes] = useState<DetailedFix[]>([]);
   const cleanupRef = useRef<(() => void) | null>(null);
 
   // Demo mode — hardcoded simulation
@@ -102,6 +102,19 @@ const Index = () => {
       const analysis: AnalysisResult = data;
       setAnalysisData(analysis);
 
+      // Build detailed fixes for the interactive panel
+      const validBugTypes = ["LINTING","SYNTAX","TYPE_ERROR","LOGIC","IMPORT","INDENTATION"];
+      setDetailedFixes(analysis.fixes.map(f => ({
+        file: f.file,
+        bugType: (validBugTypes.includes(f.bugType) ? f.bugType : "LOGIC") as DetailedFix["bugType"],
+        line: f.line,
+        description: f.description,
+        fixSuggestion: f.fixSuggestion,
+        commitMessage: f.commitMessage,
+        status: "pending" as const,
+        selected: true,
+      })));
+
       // Start dynamic simulation with real data
       const fresh = initialState();
       fresh.isRunning = true;
@@ -109,7 +122,7 @@ const Index = () => {
       fresh.initialFailures = analysis.fixes.length;
       fresh.fixes = analysis.fixes.map(f => ({
         file: f.file,
-        bugType: (["LINTING","SYNTAX","TYPE_ERROR","LOGIC","IMPORT","INDENTATION"].includes(f.bugType) ? f.bugType : "LOGIC") as any,
+        bugType: (validBugTypes.includes(f.bugType) ? f.bugType : "LOGIC") as any,
         line: f.line,
         commitMessage: f.commitMessage,
         status: "pending" as const,
@@ -118,6 +131,13 @@ const Index = () => {
 
       cleanupRef.current = createDynamicSimulation(analysis, (partial) => {
         setState(prev => ({ ...prev, ...partial }));
+        // Sync fix statuses to detailed panel
+        if (partial.fixes) {
+          setDetailedFixes(prev => prev.map((df, i) => ({
+            ...df,
+            status: partial.fixes![i]?.status || df.status,
+          })));
+        }
       });
 
       toast.success("Repository analyzed! Running healing simulation...");
@@ -150,11 +170,38 @@ const Index = () => {
     URL.revokeObjectURL(blobUrl);
   };
 
+  const handleToggleFixSelect = (index: number) => {
+    setDetailedFixes(prev => prev.map((f, i) => i === index ? { ...f, selected: !f.selected } : f));
+  };
+  const handleSelectAllFixes = () => setDetailedFixes(prev => prev.map(f => ({ ...f, selected: true })));
+  const handleDeselectAllFixes = () => setDetailedFixes(prev => prev.map(f => ({ ...f, selected: false })));
+  const handleExportSelectedFixes = () => {
+    const selected = detailedFixes.filter(f => f.selected);
+    if (selected.length === 0) { toast.error("No fixes selected"); return; }
+
+    const content = selected.map((fix, i) => (
+      `${"=".repeat(60)}\nFix ${i + 1}: ${fix.file} (Line ${fix.line})\nType: ${fix.bugType}\n${"=".repeat(60)}\n\n` +
+      `ISSUE:\n${fix.description}\n\nSUGGESTED FIX:\n${fix.fixSuggestion}\n\nCOMMIT MESSAGE:\n${fix.commitMessage}\n`
+    )).join("\n\n");
+
+    const header = `HealOps Fix Report\nRepository: ${repoUrl}\nBranch: ${state.branch}\nSelected: ${selected.length}/${detailedFixes.length} fixes\nGenerated: ${new Date().toISOString()}\n\n`;
+
+    const blob = new Blob([header + content], { type: "text/plain" });
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = `healops-fixes-${state.branch}.txt`;
+    a.click();
+    URL.revokeObjectURL(blobUrl);
+    toast.success(`Exported ${selected.length} fixes`);
+  };
+
   const handleBackToLanding = () => {
     if (cleanupRef.current) cleanupRef.current();
     setState(initialState);
     setShowLanding(true);
     setAnalysisData(null);
+    setDetailedFixes([]);
   };
 
   const showDashboard = state.isRunning || state.isComplete;
@@ -317,7 +364,7 @@ const Index = () => {
                     {/* Center column */}
                     <div className="space-y-6">
                       <LogStream logs={state.logs} />
-                      <CodeDiff fileName="src/components/Dashboard.tsx" lines={SAMPLE_DIFF} />
+                      {/* Code diff removed — fixes shown in detail panel below */}
                     </div>
 
                     {/* Right column */}
@@ -335,8 +382,29 @@ const Index = () => {
                     </div>
                   </div>
 
-                  {/* Fixes Table — full width */}
-                  <FixesTable fixes={state.fixes} />
+                  {/* Interactive Fix Detail Panel */}
+                  {detailedFixes.length > 0 ? (
+                    <FixDetailPanel
+                      fixes={detailedFixes}
+                      onToggleSelect={handleToggleFixSelect}
+                      onSelectAll={handleSelectAllFixes}
+                      onDeselectAll={handleDeselectAllFixes}
+                      onExportSelected={handleExportSelectedFixes}
+                    />
+                  ) : (
+                    <FixDetailPanel
+                      fixes={state.fixes.map(f => ({
+                        ...f,
+                        description: f.commitMessage,
+                        fixSuggestion: "Run demo with a real repository to see actual fix suggestions",
+                        selected: true,
+                      }))}
+                      onToggleSelect={handleToggleFixSelect}
+                      onSelectAll={handleSelectAllFixes}
+                      onDeselectAll={handleDeselectAllFixes}
+                      onExportSelected={handleExportSelectedFixes}
+                    />
+                  )}
 
                   {/* Bottom panels */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
