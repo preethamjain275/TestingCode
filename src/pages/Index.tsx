@@ -133,7 +133,7 @@ const Index = () => {
         if (data?.error) throw new Error(data.error);
         analysis = data;
       } catch (e) {
-        console.warn("Backend unavailable, using client-side simulation", e);
+        {/* console.warn("Backend unavailable, using client-side simulation", e); */}
         const { generateMockAnalysis } = await import("@/lib/dynamicSimulation");
         analysis = generateMockAnalysis(url);
         if (!url.includes("demo-project")) {
