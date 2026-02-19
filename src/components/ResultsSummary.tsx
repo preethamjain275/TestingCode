@@ -33,7 +33,7 @@ const ResultsSummary = ({ repoName, branch, iterations, fixesApplied, totalTime,
           {s.label}
         </span>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4" style="display:flex; flex-direction:column;">
         <Stat icon={GitBranch} label="Branch" value={branch} />
         <Stat icon={RotateCw} label="Iterations" value={String(iterations)} />
         <Stat icon={FileCheck} label="Fixes Applied" value={String(fixesApplied)} />
