@@ -162,7 +162,7 @@ const RepoInput = ({ onSubmit, isLoading }: RepoInputProps) => {
                     <div className="w-5 h-5 rounded-full bg-green-500/10 flex items-center justify-center shrink-0 text-green-500 font-bold text-[10px]">3</div>
                     <div>
                       <strong className="text-foreground block mb-1">Config & Perms</strong>
-                      Name it "HealOps". Select Expiration. <span className="text-destructive font-bold">Important:</span> Check the <code className="bg-secondary px-1 rounded text-foreground">repo</code> checkbox for full repository access.
+                      Name it eg:"HealOps". Select Expiration Date. <span className="text-destructive font-bold">Important:</span> Check the <code className="bg-secondary px-1 rounded text-foreground">repo</code> checkbox for full repository access.
                     </div>
                   </div>
 
