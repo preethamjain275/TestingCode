@@ -8,12 +8,12 @@ interface FailureData {
 }
 
 const FAILURE_DATA: FailureData[] = [
-  { name: "IMPORT", value: 4, color: "hsl(173, 80%, 50%)" },
-  { name: "SYNTAX", value: 3, color: "hsl(0, 72%, 55%)" },
-  { name: "TYPE", value: 5, color: "hsl(38, 92%, 50%)" },
-  { name: "DEPENDENCY", value: 2, color: "hsl(142, 71%, 45%)" },
-  { name: "LOGIC", value: 3, color: "hsl(262, 80%, 60%)" },
-  { name: "CONFIG", value: 1, color: "hsl(200, 70%, 50%)" },
+  { name: "IMPORT", value: 1, color: "hsl(173, 80%, 50%)" },
+  { name: "TYPE_ERROR", value: 1, color: "hsl(38, 92%, 50%)" },
+  { name: "SYNTAX", value: 1, color: "hsl(0, 72%, 55%)" },
+  { name: "LOGIC", value: 1, color: "hsl(262, 80%, 60%)" },
+  { name: "INDENTATION", value: 1, color: "hsl(200, 70%, 50%)" },
+  { name: "LINTING", value: 1, color: "hsl(142, 71%, 45%)" },
 ];
 
 const FailureChart = ({ data = FAILURE_DATA }: { data?: FailureData[] }) => {

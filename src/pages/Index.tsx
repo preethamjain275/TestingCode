@@ -13,26 +13,38 @@ import FailureChart from "@/components/FailureChart";
 import ExplainablePanel from "@/components/ExplainablePanel";
 import ResultsSummary from "@/components/ResultsSummary";
 import PredictivePanel from "@/components/PredictivePanel";
-import { createSimulation, SimulationState, SAMPLE_DIFF } from "@/lib/simulation";
+import FixesTable from "@/components/FixesTable";
+import HealingOutput from "@/components/HealingOutput";
+import IterationTracker from "@/components/IterationTracker";
+import { createSimulation, SimulationState, SAMPLE_DIFF, SIMULATION_FIXES, generateResultsJSON } from "@/lib/simulation";
 import { generatePDFReport } from "@/lib/generateReport";
-import { Download, FileText, Play, ArrowLeft } from "lucide-react";
+import { Download, FileText, Play, ArrowLeft, FileJson } from "lucide-react";
 
 const DEMO_REPO = "https://github.com/healops/demo-project";
+const BRANCH_NAME = "HEALOPS_ADMIN_AI_Fix";
+const MAX_ITERATIONS = 3;
+
+const initialState = (): SimulationState => ({
+  agents: AGENTS.map(a => ({ ...a })),
+  steps: DEFAULT_STEPS.map(s => ({ ...s })),
+  logs: [],
+  fixes: SIMULATION_FIXES.map(f => ({ ...f })),
+  isRunning: false,
+  isComplete: false,
+  healthBefore: 61,
+  healthAfter: 61,
+  confidence: 0,
+  currentIteration: 0,
+  maxIterations: MAX_ITERATIONS,
+  initialFailures: 6,
+  finalStatus: "",
+  branch: BRANCH_NAME,
+});
 
 const Index = () => {
   const [showLanding, setShowLanding] = useState(true);
   const [repoUrl, setRepoUrl] = useState("");
-  const [state, setState] = useState<SimulationState>({
-    agents: AGENTS.map(a => ({ ...a })),
-    steps: DEFAULT_STEPS.map(s => ({ ...s })),
-    logs: [],
-    isRunning: false,
-    isComplete: false,
-    healthBefore: 61,
-    healthAfter: 61,
-    confidence: 0,
-  });
-
+  const [state, setState] = useState<SimulationState>(initialState);
   const cleanupRef = useRef<(() => void) | null>(null);
 
   const startHealing = useCallback((url: string) => {
@@ -40,50 +52,48 @@ const Index = () => {
     setRepoUrl(url);
     setShowLanding(false);
 
-    setState({
-      agents: AGENTS.map(a => ({ ...a })),
-      steps: DEFAULT_STEPS.map(s => ({ ...s })),
-      logs: [],
-      isRunning: true,
-      isComplete: false,
-      healthBefore: 61,
-      healthAfter: 61,
-      confidence: 0,
-    });
+    const fresh = initialState();
+    fresh.isRunning = true;
+    setState(fresh);
 
     cleanupRef.current = createSimulation((partial) => {
       setState(prev => ({ ...prev, ...partial }));
     });
   }, []);
 
-  const handleSubmit = useCallback((url: string) => {
-    startHealing(url);
-  }, [startHealing]);
+  const handleSubmit = useCallback((url: string) => startHealing(url), [startHealing]);
+  const handleDemo = useCallback(() => startHealing(DEMO_REPO), [startHealing]);
 
-  const handleDemo = useCallback(() => {
-    startHealing(DEMO_REPO);
-  }, [startHealing]);
+  const handleExportPDF = () => generatePDFReport(state, repoUrl);
 
-  const handleExportPDF = () => {
-    generatePDFReport(state, repoUrl);
+  const handleExportJSON = () => {
+    const json = generateResultsJSON(state, repoUrl);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "results.json";
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleBackToLanding = () => {
     if (cleanupRef.current) cleanupRef.current();
-    setState({
-      agents: AGENTS.map(a => ({ ...a })),
-      steps: DEFAULT_STEPS.map(s => ({ ...s })),
-      logs: [],
-      isRunning: false,
-      isComplete: false,
-      healthBefore: 61,
-      healthAfter: 61,
-      confidence: 0,
-    });
+    setState(initialState);
     setShowLanding(true);
   };
 
   const showDashboard = state.isRunning || state.isComplete;
+
+  // Failure chart data using exact hackathon categories
+  const failureData = [
+    { name: "IMPORT", value: 1, color: "hsl(173, 80%, 50%)" },
+    { name: "TYPE_ERROR", value: 1, color: "hsl(38, 92%, 50%)" },
+    { name: "SYNTAX", value: 1, color: "hsl(0, 72%, 55%)" },
+    { name: "LOGIC", value: 1, color: "hsl(262, 80%, 60%)" },
+    { name: "INDENTATION", value: 1, color: "hsl(200, 70%, 50%)" },
+    { name: "LINTING", value: 1, color: "hsl(142, 71%, 45%)" },
+  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -108,152 +118,178 @@ const Index = () => {
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             className="max-w-[1600px] mx-auto px-6 py-6 space-y-6"
           >
-        {/* Back + Demo buttons */}
-        <div className="flex items-center justify-between">
-          <button
-            onClick={handleBackToLanding}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            Back to Home
-          </button>
-          {!state.isRunning && (
-            <button
-              onClick={handleDemo}
-              className="px-4 py-2 bg-accent text-accent-foreground text-xs font-semibold rounded-lg hover:brightness-110 transition-all flex items-center gap-1.5"
-            >
-              <Play className="w-3.5 h-3.5" />
-              Run Demo
-            </button>
-          )}
-        </div>
+            {/* Back + Demo buttons */}
+            <div className="flex items-center justify-between">
+              <button
+                onClick={handleBackToLanding}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                Back to Home
+              </button>
+              {!state.isRunning && (
+                <button
+                  onClick={handleDemo}
+                  className="px-4 py-2 bg-accent text-accent-foreground text-xs font-semibold rounded-lg hover:brightness-110 transition-all flex items-center gap-1.5"
+                >
+                  <Play className="w-3.5 h-3.5" />
+                  Run Demo
+                </button>
+              )}
+            </div>
 
-        <RepoInput onSubmit={handleSubmit} isLoading={state.isRunning} />
+            <RepoInput onSubmit={handleSubmit} isLoading={state.isRunning} />
 
-        <AnimatePresence>
-          {showDashboard && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="space-y-6"
-            >
-              {/* Pipeline Timeline */}
-              <PipelineTimeline steps={state.steps} />
+            <AnimatePresence>
+              {showDashboard && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="space-y-6"
+                >
+                  {/* Pipeline Timeline */}
+                  <PipelineTimeline steps={state.steps} />
 
-              {/* Main grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Left column */}
-                <div className="space-y-6">
-                  <AgentNetwork agents={state.agents} />
-                  <FailureChart />
-                </div>
-
-                {/* Center column */}
-                <div className="space-y-6">
-                  <LogStream logs={state.logs} />
-                  <CodeDiff fileName="src/components/Dashboard.tsx" lines={SAMPLE_DIFF} />
-                </div>
-
-                {/* Right column */}
-                <div className="space-y-6">
-                  <div className="grid grid-cols-2 gap-4">
-                    <HealthScore label="Pre-Fix" score={state.healthBefore} color="red" />
-                    <HealthScore label="Post-Fix" score={state.healthAfter} color={state.healthAfter > 80 ? "green" : "amber"} />
-                  </div>
-                  <ConfidenceMeter
-                    confidence={state.confidence}
-                    risk={state.confidence > 80 ? "low" : "medium"}
-                    impact={state.confidence > 80 ? 8 : 5}
+                  {/* Iteration Tracker */}
+                  <IterationTracker
+                    currentIteration={state.currentIteration}
+                    maxIterations={state.maxIterations}
+                    failuresPerIteration={[6]}
+                    isRunning={state.isRunning}
                   />
-                  <ExplainablePanel
-                    rootCause="Import path 'react-query' is outdated. Package was renamed to '@tanstack/react-query' in v4+. The useQuery API also changed from positional arguments to an object config."
-                    fixReason="Minimal path update preserves all existing logic. Object syntax for useQuery matches the installed v5 API. Type annotation replaces 'any' with project-defined interface."
-                    alternatives={[
-                      "Downgrade to react-query@3 (rejected: breaks other deps)",
-                      "Wrap in compatibility shim (rejected: adds unnecessary code)",
-                      "Full refactor to SWR (rejected: scope too large for auto-fix)",
-                    ]}
-                  />
-                </div>
-              </div>
 
-              {/* Bottom panels */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <PredictivePanel />
-                <AnimatePresence>
-                  {state.isComplete && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="space-y-4"
-                    >
-                      <ResultsSummary
-                        repoName={repoUrl.replace("https://github.com/", "")}
-                        branch="HEALOPS_ADMIN_AI_Fix"
-                        iterations={1}
-                        fixesApplied={3}
-                        totalTime="33.0s"
-                        status="success"
-                      />
-                      <div className="grid grid-cols-2 gap-3">
-                        <button
-                          onClick={handleExportPDF}
-                          className="py-3 px-4 glass rounded-lg text-sm font-medium text-foreground hover:bg-secondary transition-colors flex items-center justify-center gap-2"
-                        >
-                          <Download className="w-4 h-4 text-primary" />
-                          <span>Export PDF Report</span>
-                        </button>
-                        <button
-                          onClick={handleDemo}
-                          className="py-3 px-4 bg-accent/10 border border-accent/20 rounded-lg text-sm font-medium text-accent hover:bg-accent/20 transition-colors flex items-center justify-center gap-2"
-                        >
-                          <Play className="w-4 h-4" />
-                          <span>Run Again</span>
-                        </button>
+                  {/* Main grid */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Left column */}
+                    <div className="space-y-6">
+                      <AgentNetwork agents={state.agents} />
+                      <FailureChart data={failureData} />
+                    </div>
+
+                    {/* Center column */}
+                    <div className="space-y-6">
+                      <LogStream logs={state.logs} />
+                      <CodeDiff fileName="src/components/Dashboard.tsx" lines={SAMPLE_DIFF} />
+                    </div>
+
+                    {/* Right column */}
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-2 gap-4">
+                        <HealthScore label="Pre-Fix" score={state.healthBefore} color="red" />
+                        <HealthScore label="Post-Fix" score={state.healthAfter} color={state.healthAfter > 80 ? "green" : "amber"} />
                       </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                      <ConfidenceMeter
+                        confidence={state.confidence}
+                        risk={state.confidence > 80 ? "low" : "medium"}
+                        impact={state.confidence > 80 ? 8 : 5}
+                      />
+                      <ExplainablePanel
+                        rootCause="Import path 'react-query' is outdated. Package was renamed to '@tanstack/react-query' in v4+. The useQuery API also changed from positional arguments to an object config."
+                        fixReason="Minimal path update preserves all existing logic. Object syntax for useQuery matches the installed v5 API. Type annotation replaces 'any' with project-defined interface."
+                        alternatives={[
+                          "Downgrade to react-query@3 (rejected: breaks other deps)",
+                          "Wrap in compatibility shim (rejected: adds unnecessary code)",
+                          "Full refactor to SWR (rejected: scope too large for auto-fix)",
+                        ]}
+                      />
+                    </div>
+                  </div>
 
-        {/* Idle state when no simulation running */}
-        {!showDashboard && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="flex flex-col items-center justify-center py-20 text-center"
-          >
-            <div className="w-20 h-20 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-6 glow-cyan animate-float">
-              <svg className="w-10 h-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0 1 12 15a9.065 9.065 0 0 0-6.23.693L5 14.5m14.8.8 1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0 1 12 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
-              </svg>
-            </div>
-            <h2 className="text-3xl font-bold text-foreground mb-3 tracking-tight">
-              Ready to Heal
-            </h2>
-            <p className="text-muted-foreground max-w-lg text-sm leading-relaxed mb-6">
-              Enter a GitHub repository URL above or run the live demo to see the autonomous healing pipeline in action.
-            </p>
-            <button
-              onClick={handleDemo}
-              className="px-6 py-3 bg-accent text-accent-foreground font-bold rounded-xl hover:brightness-110 transition-all glow-green flex items-center gap-2"
-            >
-              <Play className="w-4 h-4" />
-              Run Live Demo
-            </button>
-            <div className="flex flex-wrap gap-3 mt-8 justify-center">
-              {["Multi-Agent AI", "Explainable Fixes", "Auto PR Creation", "Self-Learning", "PDF Reports", "Live Demo"].map((tag) => (
-                <span key={tag} className="text-[10px] font-mono text-primary bg-primary/10 px-3 py-1.5 rounded-full border border-primary/20">
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </motion.div>
-        )}
+                  {/* Fixes Table — full width */}
+                  <FixesTable fixes={state.fixes} />
+
+                  {/* Bottom panels */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <PredictivePanel />
+                    <AnimatePresence>
+                      {state.isComplete && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="space-y-4"
+                        >
+                          <HealingOutput
+                            repoUrl={repoUrl}
+                            branch={state.branch}
+                            initialFailures={state.initialFailures}
+                            fixesApplied={state.fixes.filter(f => f.status === "fixed").length}
+                            finalStatus={state.finalStatus as "PASSED" | "FAILED"}
+                            iterations={state.currentIteration}
+                          />
+                          <ResultsSummary
+                            repoName={repoUrl.replace("https://github.com/", "")}
+                            branch={state.branch}
+                            iterations={state.currentIteration}
+                            fixesApplied={state.fixes.filter(f => f.status === "fixed").length}
+                            totalTime="32.5s"
+                            status="success"
+                          />
+                          <div className="grid grid-cols-3 gap-3">
+                            <button
+                              onClick={handleExportPDF}
+                              className="py-3 px-4 glass rounded-lg text-sm font-medium text-foreground hover:bg-secondary transition-colors flex items-center justify-center gap-2"
+                            >
+                              <Download className="w-4 h-4 text-primary" />
+                              <span>PDF Report</span>
+                            </button>
+                            <button
+                              onClick={handleExportJSON}
+                              className="py-3 px-4 glass rounded-lg text-sm font-medium text-foreground hover:bg-secondary transition-colors flex items-center justify-center gap-2"
+                            >
+                              <FileJson className="w-4 h-4 text-accent" />
+                              <span>results.json</span>
+                            </button>
+                            <button
+                              onClick={handleDemo}
+                              className="py-3 px-4 bg-accent/10 border border-accent/20 rounded-lg text-sm font-medium text-accent hover:bg-accent/20 transition-colors flex items-center justify-center gap-2"
+                            >
+                              <Play className="w-4 h-4" />
+                              <span>Run Again</span>
+                            </button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Idle state */}
+            {!showDashboard && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="flex flex-col items-center justify-center py-20 text-center"
+              >
+                <div className="w-20 h-20 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-6 glow-cyan animate-float">
+                  <svg className="w-10 h-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0 1 12 15a9.065 9.065 0 0 0-6.23.693L5 14.5m14.8.8 1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0 1 12 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
+                  </svg>
+                </div>
+                <h2 className="text-3xl font-bold text-foreground mb-3 tracking-tight">
+                  Ready to Heal
+                </h2>
+                <p className="text-muted-foreground max-w-lg text-sm leading-relaxed mb-6">
+                  Enter a GitHub repository URL above or run the live demo to see the autonomous healing pipeline in action.
+                </p>
+                <button
+                  onClick={handleDemo}
+                  className="px-6 py-3 bg-accent text-accent-foreground font-bold rounded-xl hover:brightness-110 transition-all glow-green flex items-center gap-2"
+                >
+                  <Play className="w-4 h-4" />
+                  Run Live Demo
+                </button>
+                <div className="flex flex-wrap gap-3 mt-8 justify-center">
+                  {["Multi-Agent AI", "6 Bug Categories", "Auto Branch & PR", "Self-Learning", "results.json", "Live Demo"].map((tag) => (
+                    <span key={tag} className="text-[10px] font-mono text-primary bg-primary/10 px-3 py-1.5 rounded-full border border-primary/20">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </motion.div>
+            )}
           </motion.main>
         )}
       </AnimatePresence>
