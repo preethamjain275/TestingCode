@@ -24,6 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Download, FileText, Play, ArrowLeft, FileJson, Loader2, Code2, GitBranch, FileCode, Bug } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import Footer from "@/components/Footer";
 
 const DEMO_REPO = "https://github.com/healops/demo-project";
 const MAX_ITERATIONS = 3;

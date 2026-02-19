@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Cpu, Activity, Sun, Moon, Menu } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 import {
   Sheet,
   SheetContent,
@@ -23,20 +24,22 @@ const Header = () => {
     <header className="border-b border-border bg-card/50 backdrop-blur-xl sticky top-0 z-50">
       <div className="max-w-[1600px] mx-auto px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-            className="w-9 h-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center"
-          >
-            <Cpu className="w-5 h-5 text-primary" />
-          </motion.div>
+          <Link to="/">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+              className="w-9 h-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center"
+            >
+              <Cpu className="w-5 h-5 text-primary" />
+            </motion.div>
+          </Link>
           <div>
-            <h1 className="text-lg font-bold text-foreground tracking-tight flex items-center gap-2">
+            <Link to="/" className="text-lg font-bold text-foreground tracking-tight flex items-center gap-2">
               HealOps
               <span className="text-[10px] font-mono text-primary bg-primary/10 px-2 py-0.5 rounded-full">
                 AI
               </span>
-            </h1>
+            </Link>
             <p className="text-[10px] text-muted-foreground hidden sm:block">Autonomous CI/CD Healing Platform</p>
           </div>
         </div>
@@ -75,8 +78,12 @@ const Header = () => {
           </Button>
 
           <div className="hidden md:flex items-center gap-2">
-            <Button variant="ghost" size="sm">Log In</Button>
-            <Button size="sm">Sign Up</Button>
+            <Link to="/login">
+              <Button variant="ghost" size="sm">Log In</Button>
+            </Link>
+            <Link to="/signup">
+              <Button size="sm">Sign Up</Button>
+            </Link>
           </div>
 
           {/* Mobile Menu */}
@@ -104,8 +111,12 @@ const Header = () => {
                   </a>
                 ))}
                 <div className="h-px bg-border my-2" />
-                <Button variant="outline" className="w-full justify-start">Log In</Button>
-                <Button className="w-full justify-start">Sign Up</Button>
+                <Link to="/login">
+                  <Button variant="outline" className="w-full justify-start">Log In</Button>
+                </Link>
+                <Link to="/signup">
+                  <Button className="w-full justify-start">Sign Up</Button>
+                </Link>
               </nav>
             </SheetContent>
           </Sheet>
