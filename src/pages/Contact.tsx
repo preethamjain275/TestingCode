@@ -30,7 +30,7 @@ const Contact = () => {
                                 <h3 className="font-semibold text-lg mb-1">Email Us</h3>
                                 <p className="text-muted-foreground mb-2">Our team is ready to assist you.</p>
                                 <a href="mailto:support@healops.ai" className="text-primary hover:underline font-medium">
-                                    support@healops.ai
+                                    karnacoder22@gmail.com
                                 </a>
                             </div>
                         </div>
@@ -43,7 +43,7 @@ const Contact = () => {
                                 <h3 className="font-semibold text-lg mb-1">Call Us</h3>
                                 <p className="text-muted-foreground mb-2">Mon-Fri from 8am to 5pm.</p>
                                 <a href="tel:+15551234567" className="text-primary hover:underline font-medium">
-                                    +1 (555) 123-4567
+                                    +91 6362245678
                                 </a>
                             </div>
                         </div>
@@ -55,8 +55,11 @@ const Contact = () => {
                             <div>
                                 <h3 className="font-semibold text-lg mb-1">Visit Us</h3>
                                 <p className="text-muted-foreground">
-                                    123 Innovation Drive<br />
-                                    Tech Valley, CA 94043
+                                    3rd Floor, Techspire Towers
+                                    42 MG Road
+                                    Indiranagar
+                                    Bangalore, Karnataka 560038
+                                    India<br />
                                 </p>
                             </div>
                         </div>
