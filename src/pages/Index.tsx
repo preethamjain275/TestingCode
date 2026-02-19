@@ -78,39 +78,24 @@ const Index = () => {
     const branch = `${teamName}_${leaderName}_AI_Fix`;
 
     try {
-      let data: any;
-      try {
-        const response = await supabase.functions.invoke("analyze-repo", {
-          body: { repoUrl: url, teamName, leaderName },
-        });
-        if (response.error) {
-          // Try to get the actual error message from the response
-          const errBody = response.error;
-          let msg = "Analysis failed";
-          if (errBody instanceof Response || (errBody as any)?.context?.body) {
-            try {
-              const body = errBody instanceof Response ? await errBody.json() : await (errBody as any).context.json();
-              msg = body?.error || body?.message || JSON.stringify(body);
-            } catch { /* ignore parse errors */ }
-          } else if (typeof errBody === "object" && errBody !== null) {
-            msg = (errBody as any).message || JSON.stringify(errBody);
-          } else {
-            msg = String(errBody);
+      const { data, error } = await supabase.functions.invoke("analyze-repo", {
+        body: { repoUrl: url, teamName, leaderName },
+      });
+
+      if (error) {
+        // supabase-js v2: FunctionsHttpError has a context (Response) property
+        let msg = "Analysis failed";
+        try {
+          if (error.context && typeof error.context.json === "function") {
+            const body = await error.context.json();
+            msg = body?.error || body?.message || msg;
+          } else if (error.message) {
+            msg = error.message;
           }
-          throw new Error(msg);
+        } catch {
+          msg = error.message || msg;
         }
-        data = response.data;
-      } catch (invokeErr: any) {
-        // supabase-js v2 throws FunctionsHttpError for non-2xx
-        if (invokeErr?.context) {
-          try {
-            const body = await invokeErr.context.json();
-            throw new Error(body?.error || body?.message || "Analysis failed");
-          } catch (parseErr) {
-            if (parseErr instanceof Error && parseErr.message !== "Analysis failed") throw parseErr;
-          }
-        }
-        throw invokeErr;
+        throw new Error(msg);
       }
       if (data?.error) throw new Error(data.error);
 
