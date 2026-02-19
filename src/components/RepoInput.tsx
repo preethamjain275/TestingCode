@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { GitBranch, Search, Zap, AlertCircle, Users, User, Lock } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { GitBranch, Search, Zap, AlertCircle, Users, User, Lock, HelpCircle, X, CheckCircle2 } from "lucide-react";
 
 interface RepoInputProps {
   onSubmit: (url: string, teamName: string, leaderName: string, token?: string) => void;
@@ -12,6 +12,7 @@ const RepoInput = ({ onSubmit, isLoading }: RepoInputProps) => {
   const [teamName, setTeamName] = useState("");
   const [leaderName, setLeaderName] = useState("");
   const [token, setToken] = useState("");
+  const [showHelp, setShowHelp] = useState(false);
   const [error, setError] = useState("");
 
   const validateUrl = (val: string) => {
@@ -103,10 +104,80 @@ const RepoInput = ({ onSubmit, isLoading }: RepoInputProps) => {
             value={token}
             onChange={(e) => setToken(e.target.value)}
             placeholder="GitHub Personal Access Token (Optional)"
-            className="w-full pl-10 pr-4 py-3 bg-secondary border border-border rounded-lg text-foreground placeholder:text-muted-foreground font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+            className="w-full pl-10 pr-10 py-3 bg-secondary border border-border rounded-lg text-foreground placeholder:text-muted-foreground font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
             disabled={isLoading}
           />
+          <button
+            type="button"
+            onClick={() => setShowHelp(!showHelp)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-primary transition-colors"
+            title="How to generate a token?"
+          >
+            {showHelp ? <X className="w-4 h-4" /> : <HelpCircle className="w-4 h-4" />}
+          </button>
         </div>
+
+        {/* Token Help Modal */}
+        <AnimatePresence>
+          {showHelp && (
+            <motion.div
+              initial={{ opacity: 0, height: 0, marginTop: 0 }}
+              animate={{ opacity: 1, height: "auto", marginTop: 12 }}
+              exit={{ opacity: 0, height: 0, marginTop: 0 }}
+              className="glass border border-primary/20 rounded-lg overflow-hidden"
+            >
+              <div className="p-4 space-y-4 text-sm bg-background/50 backdrop-blur-sm">
+                <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                  <h4 className="font-semibold flex items-center gap-2 text-primary">
+                    <CheckCircle2 className="w-4 h-4" /> Generating a GitHub Token
+                  </h4>
+                  <a
+                    href="https://github.com/settings/tokens"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] bg-primary/10 text-primary px-2 py-1 rounded hover:bg-primary/20 transition-colors"
+                  >
+                    Open Settings ↗
+                  </a>
+                </div>
+
+                <div className="space-y-4 text-muted-foreground text-xs">
+                  <div className="flex gap-3">
+                    <div className="w-5 h-5 rounded-full bg-green-500/10 flex items-center justify-center shrink-0 text-green-500 font-bold text-[10px]">1</div>
+                    <div>
+                      <strong className="text-foreground block mb-1">Login & Go to Settings</strong>
+                      Log in to GitHub. Click Profile → Settings → Developer settings (bottom left).
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <div className="w-5 h-5 rounded-full bg-green-500/10 flex items-center justify-center shrink-0 text-green-500 font-bold text-[10px]">2</div>
+                    <div>
+                      <strong className="text-foreground block mb-1">Create Token</strong>
+                      Click <span className="text-primary/80">Personal access tokens</span> → <span className="text-primary/80">Tokens (classic)</span> → <span className="text-primary/80">Generate new token (classic)</span>.
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <div className="w-5 h-5 rounded-full bg-green-500/10 flex items-center justify-center shrink-0 text-green-500 font-bold text-[10px]">3</div>
+                    <div>
+                      <strong className="text-foreground block mb-1">Config & Perms</strong>
+                      Name it "HealOps". Select Expiration. <span className="text-destructive font-bold">Important:</span> Check the <code className="bg-secondary px-1 rounded text-foreground">repo</code> checkbox for full repository access.
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <div className="w-5 h-5 rounded-full bg-green-500/10 flex items-center justify-center shrink-0 text-green-500 font-bold text-[10px]">4</div>
+                    <div>
+                      <strong className="text-foreground block mb-1">Generate & Copy</strong>
+                      Click "Generate token". Copy the code starting with <code className="bg-secondary px-1 rounded text-foreground">ghp_</code> immediately.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Branch preview */}
         {teamName && leaderName && (

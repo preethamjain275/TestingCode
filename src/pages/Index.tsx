@@ -108,9 +108,11 @@ const Index = () => {
         } catch (e: any) {
           if (e.status === 422) {
             toast.info(`Branch ${branch} already exists, using it.`);
+          } else if (e.status === 403 || e.status === 404) {
+            toast.error("Access Denied: You cannot create branches on this repo. Please fork it first!");
           } else {
             console.error(e);
-            toast.error("Failed to create branch. Check token permissions.");
+            toast.error(`GitHub Error: ${e.message}`);
           }
         }
       } catch (e) {

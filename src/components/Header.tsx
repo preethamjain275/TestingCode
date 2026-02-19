@@ -31,10 +31,6 @@ const Header = () => {
             <Activity className="w-3.5 h-3.5 text-accent animate-pulse" />
             <span>System Online</span>
           </div>
-          <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground bg-secondary px-3 py-1.5 rounded-lg">
-            <Zap className="w-3.5 h-3.5 text-primary" />
-            <span>v2.0.0</span>
-          </div>
           <button
             onClick={toggleTheme}
             className="w-9 h-9 rounded-lg bg-secondary border border-border flex items-center justify-center hover:bg-muted transition-colors"
